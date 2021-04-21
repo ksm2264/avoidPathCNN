@@ -39,7 +39,7 @@ def getCNN():
 def getCNN_saliency():
     
     model = tf.keras.models.Sequential([  
-        tf.keras.layers.Conv2D(4, filtSize,padding='same', activation='relu', input_shape=(101,101,1),kernel_initializer='glorot_uniform',activity_regularizer=my_reg),
+        tf.keras.layers.Conv2D(4, filtSize,padding='same', activation='relu', input_shape=(101,101,4),kernel_initializer='glorot_uniform',activity_regularizer=my_reg),
 #        tf.keras.layers.Dropout(0.1),
         tf.keras.layers.BatchNormalization(),
         tf.keras.layers.MaxPooling2D(2,2),

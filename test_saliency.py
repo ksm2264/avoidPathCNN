@@ -258,47 +258,10 @@ from nn_utils import getCNN_saliency
 import tensorflow as tf
 from sklearn.utils import class_weight
 from sklearn.model_selection import train_test_split
+from scipy.signal import convolve2d
 
-model = getCNN_saliency()
-
-#my_opt = tf.keras.optimizers.Nadam(learning_rate=1e-3)
-opt= tf.keras.optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=1e-08, decay=0.0)
-
-
-
-model.compile(loss='kl_divergence',optimizer=opt,metrics=['KLDivergence'])
-
-reduceLR_cb = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1,patience=1,min_lr = 1e-16)
-ES_cb = tf.keras.callbacks.EarlyStopping(monitor='val_loss', 
-                                      min_delta=0, patience=2, verbose=0, mode='auto', baseline=None, restore_best_weights=True)
-
-#weights = class_weight.compute_class_weight('balanced',np.unique(trainClasses),trainClasses)
-
-#weights = {i : weights[i] for i in range(2)}
-#
-weights=None
-#x_in,y_in = getInputStack_saliency(trainList)
-
-#x_in,y_in = applyRandCrop(x_in,y_in)
-
-trainList,valList = train_test_split(trainList,test_size=0.1)
-
-batch_size = 20
-
-train_gen = Mygenerator(trainList,trainList,batch_size)
-val_gen = Mygenerator(valList,valList,10)
-
-#batch_size = 30
-s_p_e = len(trainList)/batch_size
-
-#history = model.fit(x_in,y_in,validation_split=0.1,batch_size=batch_size,validation_steps=5,steps_per_epoch=s_p_e,epochs=100,
-#                    verbose=1,callbacks=[reduceLR_cb],class_weight=weights)
-history = model.fit(train_gen,epochs=100,steps_per_epoch=s_p_e,validation_data=val_gen,validation_steps=5,
-                    verbose=1,callbacks=[reduceLR_cb],class_weight=weights)
-
-#test_gen = Mygenerator(testList,testClasses,1)
-
-#%%
+#model = getCNN_saliency()
+model = tf.keras.models.load_model('63_rgb')
 
 import matplotlib.pyplot as plt
 
@@ -318,7 +281,26 @@ quants = []
 
 overlayed_img = []
 
+my_filt = np.ones((38,38))/(38^2)
+
+xx,zz = np.meshgrid(range(38),range(38))
+xx,zz=xx-18.5,zz-18.5
+
+D = np.sqrt(xx*xx+zz*zz)
+
+my_filt[D>19]=0
+my_filt[my_filt!=0] = my_filt[my_filt!=0]/sum(my_filt[my_filt!=0])
+
+scaleFac = convolve2d(np.ones((101,101)),my_filt,mode='same')
+
+
+for idx,outmap in enumerate(test):
+    
+    test[idx] = (convolve2d(outmap[:,:,0],my_filt,mode='same')/scaleFac)[:,:,None]
+
+
 for idx,pred_map in enumerate(list(test)):
+    
     
     max_dex = np.argmax(y_test[idx].ravel())
     
@@ -338,10 +320,9 @@ for idx,pred_map in enumerate(list(test)):
     
     overlayed_img.append(out_img)
     
-print(np.median(quants))
 print(np.mean(quants))
 
-model.save('63_rgb_test')
+#model.save('63')
 
 #all_quants = []
 # 
